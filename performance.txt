@@ -1,0 +1,57 @@
+###Performance
+
+model {
+	# Implementation of JZS priors for partial correlation 
+	a.gamma <- 1/2
+	b.gamma <- nteams/2
+	
+	# calculation of the inverse matrix of V
+	inverse_V <- inverse(V)
+
+	#----------------- priors ------------------------------------- 
+	phi ~ dgamma(.01,.01)
+	invg ~ dgamma(a.gamma,b.gamma) 
+	g <- 1/invg
+
+	# calculation of the elements of prior precision matrix 
+	for (i in 1:4) {
+		for (j in 1:4) {
+			prior_T[i,j] <- inverse_V[i,j] * phi/g
+			} 
+	}
+	
+	# multivariate prior for the beta vector 
+	betaX[1:4] ~ dmnorm(mu_betaX,prior_T) 
+	for (i in 1:4) { 
+		mu_betaX[i] <- 0 
+	}
+	beta0 ~ dnorm(0,1)
+
+	#------ Team level regressions ---------------------------- 
+	for (n in 1:nteams) {
+		team_mu_probit[n] <- beta0 + (betaX[1]*(X[n,1])) + (betaX[2]*X[n,2]) +
+		(betaX[3]*X[n,3]) + (betaX[4]*X[n,4])
+	}
+
+    #------- Reparameterising---------
+
+
+    #reparamaterising beta prior for slope of preferencesin CC model
+    for (n in 1:nteams) { 
+        # concentration (precision) of rate parameters (for beta priors)
+        #team_sigma[n] ~ dunif(1,100)
+        team_sigma[n] ~ dunif(1,n_emp[n])  # attempts to incorporate sample size for the precision
+
+        probit(team_mu[n]) <- team_mu_probit[n] # standardisation of rate estimate mean - probit link
+        shape1_team[n] <- (team_mu[n]) * team_sigma[n]
+        shape2_team[n] <- (1 - team_mu[n]) * team_sigma[n]  
+    }
+
+	#---- Employee level model ----------------------- 
+	for (n in 1:nteams) { 
+        for (e in 1:n_emp[n]) {
+            emp[n,e] ~ dbeta(shape1_team[n],shape2_team[n])  # T(0.001,0.999)  # removing truncation
+		    Y[n,e] ~ dbin(emp[n,e],1) 
+        }         
+	}
+}
