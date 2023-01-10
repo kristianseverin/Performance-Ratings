@@ -1,0 +1,150 @@
+---
+title: "Exploratory Factor Analysis"
+output: html_document
+date: "2022-12-28"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Loading packages
+pacman::p_load(psych, tidyverse, gridExtra, ggpubr)
+```
+
+
+```{r}
+# Setting WD
+setwd("C:/Users/dkKrSeMe/OneDrive - LEGO/Pictures/Desktop/Decision Making")
+```
+
+```{r}
+# Read Data
+df1 <- read_csv("df_numeric.csv")
+
+# data without performance ratings (don't predict pr from pr)
+df <- df1[,-10]
+```
+
+```{r}
+
+# transform data and make new Bartlett
+df <- log(df)
+df <- scale(df)
+matrix_log1 <- cor(df)
+matrix_log2 <- round(matrix_log1, digits = 2)
+cortest.bartlett(matrix_log2, n = 32)
+```
+
+```{r}
+#Scree-plot
+fa.parallel(df, fm = "minires", fa = "fa", sim = F)
+
+```
+
+```{r}
+# Running analysis with 4 underlaying factors
+f_a <- fa(r = df, nfactors = 4,rotate = "oblimin")
+f_a
+
+```
+
+```{r}
+#Isolating gloading scores and putting them in dataframe
+scores <- as.data.frame(f_a$scores) 
+#adding ID column
+scores$ID <- c(1:56)
+```
+
+
+```{r}
+# Making subsets for visualization-purposes
+d_MR1 <- subset(scores, select = c(1, 5))
+d_MR2 <- subset(scores, select = c(2, 5)) 
+d_MR3 <- subset(scores, select = c(3, 5)) 
+d_MR4 <- subset(scores, select = c(4, 5))
+#d_MR5 <- subset(scores, select = c(5, 7))
+#d_MR6 <- subset(scores, select = c(3, 7))
+
+```
+
+
+```{r}
+
+# Print loadings
+print(f_a$loadings, cut = 0.3, order = TRUE)
+
+```
+
+
+```{r}
+# Categorizing features
+load <- as.data.frame(f_a$loadings[,1:4]) %>% mutate(feature_number = seq(32)) %>% mutate(color = ifelse(feature_number %in% c(1:5), "Experience",
+                                                                                              ifelse(feature_number %in% c(6:7), "D&I",
+                                                                                                     ifelse(feature_number %in% c(8:9), "Amount of Worked Hours",
+                                                                                                    ifelse(feature_number %in% c(10:17), "Salary",
+                                                                                                    ifelse(feature_number %in% c(18:32), "Belief in Organization", "something"))))))
+
+```
+
+
+```{r}
+# Visualizing Factors 
+p1 <- load %>% arrange(MR1) %>% mutate(feature_number = factor(feature_number, levels = feature_number)) %>% 
+         ggplot(., aes(feature_number, MR1, fill = color, colour = color)) +
+         geom_col(width = 0.5) + ylim(-2,2) + ggtitle("Factor 1") + xlab("feature_number") + ylab("MR1") 
+         rotate_x_text() + theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+
+```{r}
+# Visualizing Factors 
+p2 <- load %>% arrange(MR2) %>% mutate(feature_number = factor(feature_number, levels = feature_number)) %>% 
+         ggplot(., aes(feature_number, MR2, fill = color, colour = color)) +
+         geom_col(width = 0.5) + ylim(-2,2) + ggtitle("Factor 2") + xlab("feature_number") + ylab("MR2") 
+         rotate_x_text() + theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+# Visualizing Factors 
+p3 <- load %>% arrange(MR3) %>% mutate(feature_number = factor(feature_number, levels = feature_number)) %>% 
+         ggplot(., aes(feature_number, MR3, fill = color, colour = color)) +
+         geom_col(width = 0.5) + ylim(-2,2) + ggtitle("Factor 3") + xlab("feature_number") + ylab("MR3") 
+         rotate_x_text() + theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+
+```{r}
+# Visualizing Factors 
+p4 <- load %>% arrange(MR4) %>% mutate(feature_number = factor(feature_number, levels = feature_number)) %>% 
+         ggplot(., aes(feature_number, MR4, fill = color, colour = color)) +
+         geom_col(width = 0.5) + ylim(-2,2) + ggtitle("Factor 4") + xlab("feature_number") + ylab("MR4") 
+         rotate_x_text() + theme(plot.title = element_text(hjust = 0.5))
+
+
+```
+
+```{r}
+# Arrange plots
+grid.arrange(p1, p2)
+grid.arrange(p3, p4)
+```
+
+
+
+```{r}
+# Creating dataframe with Factors and preprocessed data
+
+df_factor <- as.data.frame(df1)
+
+# bind with scores
+df_factor <- cbind(df_factor, scores)
+
+# Writing CSV
+write.csv(df_factor, "C:/Users/dkKrSeMe/OneDrive - LEGO/Pictures/Desktop/Decision Making/Factor_data.csv")
+```
+
+
